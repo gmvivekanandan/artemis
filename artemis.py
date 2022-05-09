@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 import json
+from pylxd import Client
 
 from static import *
 
@@ -130,6 +131,36 @@ dependencies_results = static.dependencies()
 print(dependencies_results)
 f.write(dependencies_results)
 f.write("\n\n")
+
+# DYNAMIC ANALYSIS
+f.write("=====[DYNAMIC ANALYSIS RESULTS]=====\n\n")
+print("=====[DYNAMIC ANALYSIS RESULTS]=====\n")
+
+# CHECK IF LXD IS INSTALLED
+lxd_exists = os.path.isfile("/snap/bin/lxd")
+if(lxd_exists):
+    print("LXD exists, checking for containers...\n")
+else:
+    print("LXD is not installed, Please install LXD to continue...")
+    exit(1)
+
+# INSTANTIATE LXD CLIENT
+client = Client()
+
+# CHECK IF CONTAINER EXISTS ELSE CREATE CONTAINER
+container_exists = client.instances.exists("kali")
+if(container_exists):
+    container_config = client.instances.get("kali").config
+else:
+    print("Container does not exist,Creating a container")
+    config = {'name': 'kali', 'source': {'type': 'image',
+                                         'mode': 'pull', 'server': "https://images.linuxcontainers.org", 'protocol': 'simplestreams', 'alias': "kali/current/amd64"}, 'profiles': ['default']}
+    instance = client.instances.create(config, wait=True)
+    client.instances.get("kali").start(wait=True)
+    container_config = client.instances.get("kali").config
+
+# GET CONTAINER CONFIGS
+host_interface = container_config["volatile.eth0.host_name"]
 
 # CLOSE REPORT FILE
 f.close()
