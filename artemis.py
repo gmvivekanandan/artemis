@@ -5,6 +5,7 @@ import json
 from pylxd import Client
 
 from static import *
+from dynamic import *
 
 # PATH
 base_path = os.getcwd()
@@ -38,7 +39,8 @@ if(is_elf):
     report_file_name = file_name.split()[0]
 else:
     report_file_name = file_name.split('.')[0]
-final_report = report_path+"/"+report_file_name+".txt"
+final_report = report_path+'/'+report_file_name+".txt"
+tcpdump_report = report_path+'/'+report_file_name+".pcap"
 
 # OPEN REPORT FILE
 f = open(final_report, 'w')
@@ -150,17 +152,62 @@ client = Client()
 # CHECK IF CONTAINER EXISTS ELSE CREATE CONTAINER
 container_exists = client.instances.exists("kali")
 if(container_exists):
+    print("Using container 'kali'\n")
     container_config = client.instances.get("kali").config
 else:
     print("Container does not exist,Creating a container")
     config = {'name': 'kali', 'source': {'type': 'image',
                                          'mode': 'pull', 'server': "https://images.linuxcontainers.org", 'protocol': 'simplestreams', 'alias': "kali/current/amd64"}, 'profiles': ['default']}
     instance = client.instances.create(config, wait=True)
-    client.instances.get("kali").start(wait=True)
+    client.instances.get("kali").start(wait=True)  # START CONTAINER
     container_config = client.instances.get("kali").config
 
 # GET CONTAINER CONFIGS
 host_interface = container_config["volatile.eth0.host_name"]
+
+# DYNAMIC ANALYSIS TESTS
+dynamic = Dynamic(file_name)
+
+# STRACE OUTPUT
+strace_output = dynamic.strace()
+strace_output_returncode = strace_output[0]
+strace_output_stdout = strace_output[1]
+strace_output_return_text = strace_output[2]
+print("+++++[STRACE OUTPUT]+++++\n")
+f.write("+++++[STRACE OUTPUT]+++++\n\n")
+print(f"Strace return code: {strace_output_returncode}\n")
+f.write(f"Strace return code: {strace_output_returncode}\n")
+print(f"Strace output: {strace_output_return_text}")
+f.write(f"Strace output: {strace_output_return_text}\n")
+print(f"Strace stdout: {strace_output_stdout}\n")
+f.write(f"Strace stdout: {strace_output_stdout}\n\n")
+
+# LTRACE OUTPUT
+ltrace_output = dynamic.ltrace()
+ltrace_output_returncode = ltrace_output[0]
+ltrace_output_stdout = ltrace_output[1]
+ltrace_output_return_text = ltrace_output[2]
+print("+++++[LTRACE OUTPUT]+++++\n")
+f.write("+++++[LTRACE OUTPUT]+++++\n\n")
+print(f"Ltrace return code: {ltrace_output_returncode}\n")
+f.write(f"Ltrace return code: {ltrace_output_returncode}\n")
+print(f"Ltrace output: {ltrace_output_return_text}")
+f.write(f"Ltrace output: {ltrace_output_return_text}\n")
+print(f"Ltrace stdout: {ltrace_output_stdout}\n")
+f.write(f"Ltrace stdout: {ltrace_output_stdout}\n\n")
+
+# TCPDUMP ANALYSIS
+print("+++++[TCPDUMP ANALYSIS]+++++\n")
+f.write("+++++[TCPDUMP ANALYSIS]+++++\n\n")
+print(f"Starting tcpdump on interface {host_interface}\n")
+print("Please enter sudo password if prompted\n")
+subprocess.run(["timeout", "60", "sudo", "tcpdump", "-i", host_interface, "-G", '15', "-W", '1',
+                "-w", f"{tcpdump_report}"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+dynamic.tcpdump()
+print(f"\nTCPDUMP report saved in {tcpdump_report}\n")
+
+# STOP CONTAINER MANUALLY
+print("To stop container execute \"lxc stop kali\"")
 
 # CLOSE REPORT FILE
 f.close()
