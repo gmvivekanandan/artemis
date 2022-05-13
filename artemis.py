@@ -153,13 +153,20 @@ client = Client()
 container_exists = client.instances.exists("kali")
 if(container_exists):
     print("Using container 'kali'\n")
-    container_config = client.instances.get("kali").config
+    container_status = client.instances.get('kali').status
+    if(container_status == "Running"):
+        container_config = client.instances.get("kali").config
+    else:
+        print("Starting container...")
+        client.instances.get("kali").start(wait=True)  # START CONTAINER
+        container_config = client.instances.get("kali").config
 else:
     print("Container does not exist,Creating a container")
     config = {'name': 'kali', 'source': {'type': 'image',
                                          'mode': 'pull', 'server': "https://images.linuxcontainers.org", 'protocol': 'simplestreams', 'alias': "kali/current/amd64"}, 'profiles': ['default']}
     instance = client.instances.create(config, wait=True)
-    client.instances.get("kali").start(wait=True)  # START CONTAINER
+    print("Starting container...")
+    client.instances.get("kali").start(wait=True)
     container_config = client.instances.get("kali").config
 
 # GET CONTAINER CONFIGS
@@ -201,10 +208,23 @@ print("+++++[TCPDUMP ANALYSIS]+++++\n")
 f.write("+++++[TCPDUMP ANALYSIS]+++++\n\n")
 print(f"Starting tcpdump on interface {host_interface}\n")
 print("Please enter sudo password if prompted\n")
-subprocess.run(["timeout", "60", "sudo", "tcpdump", "-i", host_interface, "-G", '15', "-W", '1',
+subprocess.run(["sudo", "timeout", "60",  "tcpdump", "-i", host_interface, "-G", '15', "-W", '1',
                 "-w", f"{tcpdump_report}"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 dynamic.tcpdump()
 print(f"\nTCPDUMP report saved in {tcpdump_report}\n")
+f.write(f"TCPDUMP report saved in {tcpdump_report}\n\n")
+
+# PRINT HTTP SERVER IP ADDRESS
+ip_address_list_output = subprocess.Popen(
+    ["tshark", "-r", tcpdump_report, "-T", "fields", "-e", "ip.dst", "-Y", "http"], stdout=subprocess.PIPE)
+sorted_http_ips = subprocess.Popen(
+    ["sort", '-u'], stdin=ip_address_list_output.stdout, stdout=subprocess.PIPE)
+column_output = subprocess.check_output(
+    ["column"], stdin=sorted_http_ips.stdout, text=True)
+print("+++++[HTTP SERVER IP ADDRESSES]+++++\n")
+print(column_output)
+f.write("+++++[HTTP SERVER IP ADDRESSES]+++++\n\n")
+f.write(column_output)
 
 # STOP CONTAINER MANUALLY
 print("To stop container execute \"lxc stop kali\"")
