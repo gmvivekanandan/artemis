@@ -96,6 +96,7 @@ if yara_results == []:
     f.write("Try changing the YARA rule in /config/capabilities.yara with other yara rule file\nDO NOT CHANGE THE NAME OF THE FILE!\n\n")
 else:
     print(yara_results)
+    print("\n")
     f.write(str(yara_results))
     f.write("\n\n")
 

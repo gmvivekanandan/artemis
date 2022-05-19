@@ -25,18 +25,21 @@ class Static:
             return self.md5
 
     def virus_total(self):
-        url = f"https://www.virustotal.com/api/v3/files/{self.md5}"
-        headers = {
-            "Accept": "application/json",
-            # VIRUSTOTAL API KEY
-            "x-apikey": "ba454f7f9a46f013dcef1daf5346aa86d89465d36cbb9ecd963a7a3279e109aa"
-        }
-        response = requests.request("GET", url, headers=headers)
-        if(response.status_code == 404):
-            return(None)
-        else:
-            response_data = response.json()  # CONVERT JSON TO PYTHON DICT
-            return(response_data)
+        try:
+            url = f"https://www.virustotal.com/api/v3/files/{self.md5}"
+            headers = {
+                "Accept": "application/json",
+                # VIRUSTOTAL API KEY
+                "x-apikey": "ba454f7f9a46f013dcef1daf5346aa86d89465d36cbb9ecd963a7a3279e109aa"
+            }
+            response = requests.request("GET", url, headers=headers)
+            if(response.status_code == 404):
+                return(None)
+            else:
+                response_data = response.json()  # CONVERT JSON TO PYTHON DICT
+                return(response_data)
+        except:
+            print("No internet! Try again with internet")
 
     def yara(self):
         rule = yara.compile('config/capabilities.yara')
